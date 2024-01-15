@@ -21,7 +21,6 @@ namespace Lab3_MinimalAPI
             //--------- Person
             app.MapPost("/person", ApiHandler.AddNewPerson);
             app.MapGet("/person", ApiHandler.ListAllPeople);
-            app.MapDelete("/person/{personId}", ApiHandler.DeletePerson);
 
             //--------- Interest
             app.MapPost("/person/{personId}", ApiHandler.AddNewInterest);

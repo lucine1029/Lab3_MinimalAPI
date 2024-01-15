@@ -12,13 +12,13 @@ namespace Lab3_MinimalAPI
         //handling all API interactions
 
         //--------- Person
-        public static IResult AddNewPerson(ApplicationContext context, PersonDto person)
+        public static IResult AddNewPerson(ApplicationContext context, PersonDto personDto)
         {
             context.Person.Add(new Models.Person()
             {
-                FirstName = person.FirstName,
-                LastName = person.LastName,
-                PhoneNum = person.PhoneNum
+                FirstName = personDto.FirstName,
+                LastName = personDto.LastName,
+                PhoneNum = personDto.PhoneNum
             });
             context.SaveChanges();
             return Results.StatusCode((int)HttpStatusCode.Created);
@@ -33,35 +33,24 @@ namespace Lab3_MinimalAPI
             }).ToList();
             return Results.Json(persons);
         }
-        public static IResult DeletePerson(ApplicationContext context, int personId)
-        {
-            var person = context.Person
-                .Where(p => p.Id == personId)
-                .FirstOrDefault();
-            if (person != null)
-            {
-                context.Person.Remove(person);
-                context.SaveChanges();
-            }
-            return Results.StatusCode((int)HttpStatusCode.Accepted);
-        }
+
 
         //--------- Interest
-        public static IResult AddNewInterest(ApplicationContext context, InterestDto interest)
+        public static IResult AddNewInterest(ApplicationContext context, InterestDto interestDto)
         {
             //add new interest to the database
             context.Interests.Add(new Models.Interest()
             {
-                InterestName = interest.InterestName,
-                InterestDescription = interest.InterestDescription
+                InterestName = interestDto.InterestName,
+                InterestDescription = interestDto.InterestDescription
             });
             context.SaveChanges();
             return Results.StatusCode((int)HttpStatusCode.Created);
         }
-        public static IResult ConnectInterestToPerson(ApplicationContext context, int personId, int interestId)
+        public static IResult ConnectInterestToPerson(ApplicationContext context, int personId, InterestDto interestDto)
         {
-
-            //find the person with the given Id
+            //Connect a person to an new interest
+            //1. find the person with the given Id
             var person = context.Person
                 .Where(p => p.Id == personId)
                 .Include(p => p.Interests)
@@ -70,16 +59,18 @@ namespace Lab3_MinimalAPI
             { 
                 return Results.NotFound();
             }
-             //find the interest with the given Id
-            var interest = context.Interests
-                .Where(i => i.Id == interestId)
-                .SingleOrDefault();     
-            if (interest == null)
+            //2. add an new interest to the database
+            var newInterest = new Models.Interest()
             {
-                return Results.NotFound();
-            }
-            //add the interest to the person
-            person.Interests.Add(interest);
+                InterestName = interestDto.InterestName,
+                InterestDescription = interestDto.InterestDescription
+            };
+            context.SaveChanges();
+            return Results.StatusCode((int)HttpStatusCode.Created);
+
+            //3. add the new interest to the person
+            person.Interests.Add(newInterest);
+            context.SaveChanges();
             return Results.StatusCode((int)HttpStatusCode.Created);
         }
         public static IResult ListPersonsInterests(ApplicationContext context, int personId)
@@ -89,6 +80,11 @@ namespace Lab3_MinimalAPI
                 .Where(p => p.Id == personId)
                 .Include(p => p.Interests)
                 .SingleOrDefault();
+
+            if (person == null)
+            {
+                return Results.NotFound($"The person with {personId} has not found.");
+            }
 
             List<ListPersonsInterestsViewModel> interests = person.Interests.Select(i => new ListPersonsInterestsViewModel
             {
@@ -108,22 +104,27 @@ namespace Lab3_MinimalAPI
                 .Include(p => p.InterestLinks)
                 .SingleOrDefault();
 
+            if (person == null)
+            {
+                return Results.NotFound($"The person with {personId} has not found.");
+            }
+
             List<ListPersonsLinksViewModel> links = person.InterestLinks.Select(l => new ListPersonsLinksViewModel
             {
                 URL = l.URL
             }).ToList();
             return Results.Json(links);
         }
-        public static IResult InsertLinkToPersonToInterest(ApplicationContext context, InterestLinkDto interestLink, int personId, int interestId)
+        public static IResult InsertLinkToPersonToInterest(ApplicationContext context, InterestLinkDto interestLinkDto, int personId, int interestId)
         {
+            //Insert new links for a specific person and a specific interest
             //find the person with the given Id
             var person = context.Person
                 .Where(p => p.Id == personId)
-                .Include(p => p.Interests)
                 .SingleOrDefault();
             if (person == null)
             {
-                return Results.NotFound();
+                return Results.NotFound($"The person with {personId} has not found.");
             }
             //find the interest with the given Id
             var interest = context.Interests
@@ -131,12 +132,12 @@ namespace Lab3_MinimalAPI
                 .SingleOrDefault();
             if (interest == null)
             {
-                return Results.NotFound();
+                return Results.NotFound($"The interest with {interestId} has not found.");
             }
             //create an new link
             var link = new InterestLink
             {
-                URL = interestLink.URL
+                URL = interestLinkDto.URL
             };
             //connect the new link to the person and the interest
             person.InterestLinks.Add(link);
